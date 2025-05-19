@@ -1,0 +1,40 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon index.js",
+    "dev:worker": "nodemon worker.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@google/genai": "^0.13.0",
+    "@google/generative-ai": "^0.24.1",
+    "@langchain/community": "^0.3.40",
+    "@langchain/core": "^0.3.44",
+    "@langchain/openai": "^0.5.5",
+    "@langchain/qdrant": "^0.1.2",
+    "@langchain/textsplitters": "^0.1.0",
+    "@qdrant/js-client-rest": "^1.14.0",
+    "bullmq": "^5.49.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "4.x",
+    "express-rate-limit": "^7.5.0",
+    "langchain": "^0.3.21",
+    "multer": "1.4.5-lts.2",
+    "openai": "^4.94.0",
+    "pdf-parse": "^1.1.1",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "@types/express": "4.x",
+    "@types/multer": "^1.4.12",
+    "@types/node": "^22.14.1"
+  }
+}
+
