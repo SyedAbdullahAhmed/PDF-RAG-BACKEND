@@ -56,8 +56,13 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const uploadPath = './uploads';
 
 if (!fs.existsSync(uploadPath)) {
-  fs.mkdirSync(uploadPath, { recursive: true });
-  console.log('📁 uploads folder created');
+  fs.mkdirSync(uploadPath, { recursive: true },err => {
+    if (err) {
+      console.error('Error creating uploads directory:', err);
+    } else {
+      console.log('📁 uploads folder created');
+    }
+  });
 }
 
 /** Multer config */
