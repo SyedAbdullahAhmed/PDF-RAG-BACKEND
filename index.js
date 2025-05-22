@@ -51,10 +51,12 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 //     port: '6379',
 //   },
 // });
-const uploadsDir = path.join(__dirname, 'uploads');
+// const uploadsDir = path.join(__dirname, 'uploads');
 
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir);
+const uploadPath = './uploads';
+
+if (!fs.existsSync(uploadPath)) {
+  fs.mkdirSync(uploadPath, { recursive: true });
   console.log('📁 uploads folder created');
 }
 
@@ -163,7 +165,7 @@ app.post('/upload/pdf', upload.single('pdf'), async (req, res) => {
 
     await vectorStore.addDocuments(docs);
     console.log(`All docs are added to vector store!`);
-    await cleanUploads(uploadsDir)
+    await cleanUploads(uploadPath)
 
     return res.json({ message: 'uploaded' });
   } catch (e) {
