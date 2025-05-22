@@ -2,6 +2,9 @@ import express from 'express';
 import cors from 'cors';
 import multer from 'multer';
 import { Queue } from 'bullmq';
+import fs from 'fs/promises';
+// import fs from 'fs';
+import path from 'path';
 import { QdrantVectorStore } from '@langchain/qdrant';
 import { v4 as uuidv4 } from 'uuid';
 import 'dotenv/config'
@@ -10,8 +13,11 @@ import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai";
 import { TaskType } from "@google/generative-ai";
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { PDFLoader } from '@langchain/community/document_loaders/fs/pdf';
+import { fileURLToPath } from 'url';
 
 const app = express();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 app.set('trust proxy', 1);
 
@@ -76,25 +82,36 @@ app.get('/', (req, res) => {
   return res.json({ status: 'All Good!' });
 });
 
-
-let filename = '';
-let destination = '';
-let path = '';
-
+async function cleanUploads(uploadsDir) {
+  try {
+    const files = await fs.readdir(uploadsDir);
+    await Promise.all(
+      files.map(file => fs.unlink(path.join(uploadsDir, file)))
+    );
+    console.log('All files deleted');
+  } catch (err) {
+    console.error('Error deleting files:', err);
+  }
+}
 app.post('/upload/pdf', upload.single('pdf'), async (req, res) => {
   try {
-    console.log('Received file upload request');
+    console.log('🔥 Starting upload process');
+    const uploadsDir = path.join(__dirname, 'uploads');
+    console.log('Uploads Directory:', uploadsDir);
+
+    
+
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    filename = req.file.originalname;
-    destination = req.file.destination;
-    path = req.file.path;
+    const filename = req.file.originalname;
+    const destination = req.file.destination;
+    const filePath = req.file.path;
 
     console.log(`File Name: ${filename}`)
     console.log(`Destination: ${destination}`)
-    console.log(`Path: ${path}`)
+    console.log(`Path: ${filePath}`)
     // await queue.add(
     //   'file-ready',
     //   JSON.stringify({
@@ -104,7 +121,7 @@ app.post('/upload/pdf', upload.single('pdf'), async (req, res) => {
     //   })
     // );
 
-    const loader = new PDFLoader(path);
+    const loader = new PDFLoader(filePath);
     const docs = await loader.load();
 
     console.log(`Loaded ${docs.length} documents`);
@@ -122,7 +139,7 @@ app.post('/upload/pdf', upload.single('pdf'), async (req, res) => {
 
 
     const testVector = await embeddings.embedQuery("OK Google");
-    console.log(`✅ Embedding test vector length: ${testVector}`);
+    // console.log(`✅ Embedding test vector length: ${testVector}`);
 
     const vectorStore = await QdrantVectorStore.fromExistingCollection(
       embeddings,
@@ -132,9 +149,12 @@ app.post('/upload/pdf', upload.single('pdf'), async (req, res) => {
         apiKey: process.env.QUADRANT_API_KEY
       }
     );
+    
 
     await vectorStore.addDocuments(docs);
     console.log(`All docs are added to vector store!`);
+    await cleanUploads(uploadsDir)
+
     return res.json({ message: 'uploaded' });
   } catch (e) {
     console.log(e)
@@ -182,6 +202,8 @@ app.get('/chat', async (req, res) => {
     const output = await model.generateContent(`${SYSTEM_PROMPT}\n Answer this question according to context: ${userQuery}`);
 
     console.log(output.response.text());
+
+
 
 
     return res.json({
