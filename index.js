@@ -12,7 +12,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { PDFLoader } from '@langchain/community/document_loaders/fs/pdf';
 
 
-
+app.set('trust proxy', 1);
 const limiter = rateLimit({
   windowMs: 60 * 1000,
   limit: 8,
