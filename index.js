@@ -11,8 +11,10 @@ import { TaskType } from "@google/generative-ai";
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { PDFLoader } from '@langchain/community/document_loaders/fs/pdf';
 
+const app = express();
 
 app.set('trust proxy', 1);
+
 const limiter = rateLimit({
   windowMs: 60 * 1000,
   limit: 8,
@@ -58,8 +60,6 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
-
-const app = express();
 
 app.use(cors({
   origin: [
