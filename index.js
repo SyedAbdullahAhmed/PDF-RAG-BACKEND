@@ -2,8 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import multer from 'multer';
 import { Queue } from 'bullmq';
-import fs from 'fs/promises';
-// import fs from 'fs';
+import fs from 'fs';
+const fsPromises = fs.promises;
 import path from 'path';
 import { QdrantVectorStore } from '@langchain/qdrant';
 import { v4 as uuidv4 } from 'uuid';
@@ -51,7 +51,12 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 //     port: '6379',
 //   },
 // });
+const uploadsDir = path.join(__dirname, 'uploads');
 
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir);
+  console.log('📁 uploads folder created');
+}
 
 /** Multer config */
 const storage = multer.diskStorage({
@@ -84,9 +89,9 @@ app.get('/', (req, res) => {
 
 async function cleanUploads(uploadsDir) {
   try {
-    const files = await fs.readdir(uploadsDir);
+    const files = await fsPromises.readdir(uploadsDir);
     await Promise.all(
-      files.map(file => fs.unlink(path.join(uploadsDir, file)))
+      files.map(file => fsPromises.unlink(path.join(uploadsDir, file)))
     );
     console.log('All files deleted');
   } catch (err) {
@@ -97,9 +102,14 @@ app.post('/upload/pdf', upload.single('pdf'), async (req, res) => {
   try {
     console.log('🔥 Starting upload process');
     const uploadsDir = path.join(__dirname, 'uploads');
-    console.log('Uploads Directory:', uploadsDir);
 
-    
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir);
+      console.log('📁 uploads folder created');
+    }
+
+
+
 
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
@@ -149,7 +159,7 @@ app.post('/upload/pdf', upload.single('pdf'), async (req, res) => {
         apiKey: process.env.QUADRANT_API_KEY
       }
     );
-    
+
 
     await vectorStore.addDocuments(docs);
     console.log(`All docs are added to vector store!`);
