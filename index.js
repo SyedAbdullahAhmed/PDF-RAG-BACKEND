@@ -61,7 +61,12 @@ const upload = multer({ storage: storage });
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: [
+    'http://localhost:8000',
+    "https://rag-pdf-frontend-gray.vercel.app"
+  ],
+}));
 app.use(limiter)
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -77,105 +82,116 @@ let destination = '';
 let path = '';
 
 app.post('/upload/pdf', upload.single('pdf'), async (req, res) => {
-  console.log('Received file upload request');
-  if (!req.file) {
-    return res.status(400).json({ error: 'No file uploaded' });
-  }
-
-  filename = req.file.originalname;
-  destination = req.file.destination;
-  path = req.file.path;
-
-  console.log(`File Name: ${filename}`)
-  console.log(`Destination: ${destination}`)
-  console.log(`Path: ${path}`)
-  // await queue.add(
-  //   'file-ready',
-  //   JSON.stringify({
-  //     filename: req.file.originalname,
-  //     destination: req.file.destination,
-  //     path: req.file.path,
-  //   })
-  // );
-
-  const loader = new PDFLoader(path);
-  const docs = await loader.load();
-
-  console.log(`Loaded ${docs.length} documents`);
-
-  // const embeddings = new OpenAIEmbeddings({
-  //   model: 'text-embedding-3-small',
-  //   apiKey: '',
-  // });
-  const embeddings = new GoogleGenerativeAIEmbeddings({
-    apiKey: process.env.GEMINI_API_KEY,
-    modelName: 'embedding-001',
-    taskType: TaskType.RETRIEVAL_DOCUMENT,
-    title: 'Uploaded Document',
-  });
-
-
-  const testVector = await embeddings.embedQuery("OK Google");
-  console.log(`✅ Embedding test vector length: ${testVector}`);
-
-  const vectorStore = await QdrantVectorStore.fromExistingCollection(
-    embeddings,
-    {
-      url: "https://f7fced0b-57b3-469e-9b9f-496c14043e0d.eu-west-2-0.aws.cloud.qdrant.io",
-      collectionName: 'langchainjs-testing',
-      apiKey: process.env.QUADRANT_API_KEY
+  try {
+    console.log('Received file upload request');
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
     }
-  );
 
-  await vectorStore.addDocuments(docs);
-  console.log(`All docs are added to vector store`);
-  return res.json({ message: 'uploaded' });
+    filename = req.file.originalname;
+    destination = req.file.destination;
+    path = req.file.path;
+
+    console.log(`File Name: ${filename}`)
+    console.log(`Destination: ${destination}`)
+    console.log(`Path: ${path}`)
+    // await queue.add(
+    //   'file-ready',
+    //   JSON.stringify({
+    //     filename: req.file.originalname,
+    //     destination: req.file.destination,
+    //     path: req.file.path,
+    //   })
+    // );
+
+    const loader = new PDFLoader(path);
+    const docs = await loader.load();
+
+    console.log(`Loaded ${docs.length} documents`);
+
+    // const embeddings = new OpenAIEmbeddings({
+    //   model: 'text-embedding-3-small',
+    //   apiKey: '',
+    // });
+    const embeddings = new GoogleGenerativeAIEmbeddings({
+      apiKey: process.env.GEMINI_API_KEY,
+      modelName: 'embedding-001',
+      taskType: TaskType.RETRIEVAL_DOCUMENT,
+      title: 'Uploaded Document',
+    });
+
+
+    const testVector = await embeddings.embedQuery("OK Google");
+    console.log(`✅ Embedding test vector length: ${testVector}`);
+
+    const vectorStore = await QdrantVectorStore.fromExistingCollection(
+      embeddings,
+      {
+        url: process.env.QUADRANT_END_POINT,
+        collectionName: 'langchainjs-testing',
+        apiKey: process.env.QUADRANT_API_KEY
+      }
+    );
+
+    await vectorStore.addDocuments(docs);
+    console.log(`All docs are added to vector store!`);
+    return res.json({ message: 'uploaded' });
+  } catch (e) {
+    console.log(e)
+    return res.json({ message: e.message })
+  }
 });
 
 
 app.get('/chat', async (req, res) => {
+  try {
 
-  const userQuery = req.query.message;
-  console.log(userQuery);
+    const userQuery = req.query.message;
+    console.log(userQuery);
 
-  const embeddings = new GoogleGenerativeAIEmbeddings({
-    apiKey: process.env.GEMINI_API_KEY,
-    modelName: 'embedding-001',
-    taskType: TaskType.RETRIEVAL_DOCUMENT,
-    title: 'Uploaded Document',
-  });
+    const embeddings = new GoogleGenerativeAIEmbeddings({
+      apiKey: process.env.GEMINI_API_KEY,
+      modelName: 'embedding-001',
+      taskType: TaskType.RETRIEVAL_DOCUMENT,
+      title: 'Uploaded Document',
+    });
 
-  const vectorStore = await QdrantVectorStore.fromExistingCollection(
-    embeddings,
-    {
-      url: process.env.QUADRANT_END_POINT,
-      collectionName: 'langchainjs-testing',
-      apiKey: process.env.QUADRANT_API_KEY
-    }
-  );
+    const vectorStore = await QdrantVectorStore.fromExistingCollection(
+      embeddings,
+      {
+        url: process.env.QUADRANT_END_POINT,
+        collectionName: 'langchainjs-testing',
+        apiKey: process.env.QUADRANT_API_KEY
+      }
+    );
 
-  const ret = vectorStore.asRetriever({
-    k: 2,
-  });
+    const ret = vectorStore.asRetriever({
+      k: 2,
+    });
 
-  const result = await ret.invoke(userQuery);
+    const result = await ret.invoke(userQuery);
 
-  const SYSTEM_PROMPT = `
+    const SYSTEM_PROMPT = `
   You are helfull AI Assistant who answeres the user query based on the available context from PDF File.
   Context:
   ${JSON.stringify(result)}
   `;
 
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-  const output = await model.generateContent(`${SYSTEM_PROMPT}\n Answer this question according to context: ${userQuery}`);
+    const output = await model.generateContent(`${SYSTEM_PROMPT}\n Answer this question according to context: ${userQuery}`);
 
-  console.log(output.response.text());
+    console.log(output.response.text());
 
 
-  return res.json({
-    message: output.response.text(),
-  });
+    return res.json({
+      message: output.response.text(),
+    });
+  }
+  catch (e) {
+    console.log(e)
+    return res.json({ error: e.message })
+  }
 });
 
 
