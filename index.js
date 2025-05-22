@@ -53,7 +53,8 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 // });
 // const uploadsDir = path.join(__dirname, 'uploads');
 
-const uploadPath = './uploads';
+const uploadPath = '/tmp/uploads';
+
 
 if (!fs.existsSync(uploadPath)) {
   fs.mkdirSync(uploadPath, { recursive: true },err => {
@@ -68,7 +69,7 @@ if (!fs.existsSync(uploadPath)) {
 /** Multer config */
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, 'uploads/');
+    cb(null, uploadPath);
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = uuidv4();
@@ -108,13 +109,6 @@ async function cleanUploads(uploadsDir) {
 app.post('/upload/pdf', upload.single('pdf'), async (req, res) => {
   try {
     console.log('🔥 Starting upload process');
-    const uploadsDir = path.join(__dirname, 'uploads');
-
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir);
-      console.log('📁 uploads folder created');
-    }
-
 
 
 
